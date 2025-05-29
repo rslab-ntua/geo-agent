@@ -1,0 +1,57 @@
+version: '3.9'
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    restart: always
+    networks:
+      - rag_network
+    ports:
+      - "11434:11434"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  mini_geo:
+    image: miniserver_tilemachos
+    restart: always
+    # user: "${UID}:${GID}"
+    networks:
+      - rag_network
+    volumes:
+      - /mnt/nvme2/bicubes/tilemachos/mini_server:/data/app/
+    environment:
+      - KERAS_BACKEND=torch
+    ports:
+      - "8000:8000"
+
+  inland_water_rag:
+    build:
+      context: .
+      args:
+        USER_ID: 1001
+        GROUP_ID: 1001
+    networks:
+      - rag_network
+    volumes:
+      - /mnt/nvme2/bicubes/tilemachos:/workspace
+    environment:
+      - KERAS_BACKEND=torch
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    stdin_open: true  # Keeps STDIN open
+    tty: true         # Allocates a pseudo-TTY
+    command: ["bash"] # Starts with an interactive bash shell
+
+networks:
+  rag_network:
+    driver: bridge
